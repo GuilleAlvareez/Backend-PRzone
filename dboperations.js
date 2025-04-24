@@ -1,13 +1,14 @@
-export async funtion addUser (user) {
-    const query = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)'
-    const values = [newUser.username, newUser.password, newUser.email]
+import { connection } from './config.js'
 
-    const result = await connection.execute(query, values)
-
-    result.catch((err) => {
-      console.error('Error al insertar el usuario:', err)
-      res.status(500).json({ error: 'Error al insertar el usuario' })
-    })
-    
-    res.send("Usuario creado con éxito")
+export async function findUser (username, password) {
+  try {
+    const [rows] = await connection.query(
+      'SELECT username, password, email FROM User WHERE username = ? AND password = ?',
+      [username, password]
+    )
+    return rows
+  } catch (err) {
+    console.error('Error al verificar usuario:', err)
+    return []
+  }
 }
