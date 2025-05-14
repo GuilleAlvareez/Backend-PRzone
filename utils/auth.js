@@ -19,7 +19,7 @@ export const auth = betterAuth({
         type: 'boolean', // Define el tipo como booleano
         required: false, // No es estrictamente requerido ya que tiene un default
         defaultValue: false, // Establece el valor por defecto a false
-        input: false
+        input: true
       }
     }
   },

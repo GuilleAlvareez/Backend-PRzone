@@ -1,6 +1,6 @@
 import express from 'express'
 import cookieParser from 'cookie-parser'
-import { PORT } from './config.js'
+import { connection, PORT } from './config.js'
 import cors from 'cors'
 import { auth } from './utils/auth.js'
 import { fromNodeHeaders } from 'better-auth/node'
@@ -101,14 +101,13 @@ app.post('/register', async (req, res) => {
   }
 
   try {
-    console.log('Intentando registrar usuario:', { email, name, username })
-
     const registrationResult = await auth.api.signUpEmail({
       body: {
         email,
         password,
         name,
-        ...(username && { username })
+        ...(username && { username }),
+        admin: true
       }
     })
 
@@ -158,8 +157,6 @@ app.get('/api/me', async (req, res) => {
       const user = sessionData.user
       const session = sessionData.session
 
-      console.log(user)
-
       // Devuelve la información relevante (¡cuidado con devolver datos sensibles!)
       res.json({
         user,
@@ -175,7 +172,115 @@ app.get('/api/me', async (req, res) => {
   }
 })
 
-app.post('/protected', (req, res) => {})
+app.get('/exercises', async (req, res) => {
+  const query = 'SELECT * FROM Ejercicio'
+
+  try {
+    const [results] = await connection.query(query)
+    res.status(200).json({
+      results: results,
+      category: 'all'
+    })
+  } catch (err) {
+    console.error('Error fetching exercises:', err)
+    res.status(500).json({ message: 'Error fetching exercises.' })
+  }
+})
+
+app.post('/exercises/new', async (req, res) => {
+  const { name, username, category } = req.body
+
+  if (!name || !username) {
+    return res.status(400).json({ message: 'Name and category are required.' })
+  }
+
+  // const query = 'INSERT INTO Ejercicio (nombre, visibilidad) VALUES (?, ?)'
+
+  try {
+    // Insertar el ejercicio
+    const [result] = await connection.execute(
+      'INSERT INTO Ejercicio (nombre, visibilidad) VALUES (?, ?)',
+      [name, username]
+    )
+
+    const exerciseId = result.insertId
+    console.log('Exercise ID:', exerciseId)
+
+    // Insertar músculos si hay
+    if (Array.isArray(category) && category.length > 0) {
+      const values = category.map((muscleId) => [exerciseId, muscleId])
+      await connection.query(
+        'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?',
+        [values]
+      )
+
+      return res.status(201).json({ message: 'Exercise created successfully with muscles.' })
+    } else {
+      return res.status(201).json({ message: 'Exercise created successfully without muscles.' })
+    }
+  } catch (err) {
+    console.error('Error during exercise creation:', err)
+    return res.status(500).json({ message: 'Internal server error.' })
+  }
+
+  // connection.query(query, [name, username], (err, results) => {
+  //   if (err) {
+  //     console.error('Error creating exercise:', err)
+  //     return res.status(500).json({ message: 'Error creating exercise.' })
+  //   }
+
+  //   console.log('Results from first query:', results) // Verifica lo que contiene results
+  //   const exerciseId = results.insertId
+  //   console.log('Exercise ID:', exerciseId)
+
+  //   if (category.length > 0) {
+  //     const values = category.map((muscleId) => [exerciseId, muscleId])
+  //     const insertMusclesQuery = 'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?'
+
+  //     connection.query(insertMusclesQuery, [values], (err2) => {
+  //       if (err2) {
+  //         console.error('Error linking muscles:', err2)
+  //         return res.status(500).json({ message: 'Error linking muscles to exercise.' })
+  //       }
+  //       res.status(201).json({ message: 'Exercise created successfully.' })
+  //     })
+  //   } else {
+  //     // Si no hay músculos, devolver solo éxito de creación
+  //     return res.status(201).json({ message: 'Exercise created successfully without muscles.' })
+  //   }
+  // })
+})
+
+app.delete('/exercises/delete/:id', async (req, res) => {
+  const { id } = req.params
+
+  if (!id) {
+    return res.status(400).json({ message: 'ID del ejercicio requerido.' })
+  }
+
+  try {
+    // Primero elimina relaciones con músculos si existen
+    await connection.query(
+      'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
+      [id]
+    )
+
+    // Luego elimina el ejercicio
+    const [result] = await connection.query(
+      'DELETE FROM Ejercicio WHERE id = ?',
+      [id]
+    )
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Ejercicio no encontrado.' })
+    }
+
+    res.status(200).json({ message: 'Ejercicio eliminado correctamente.' })
+  } catch (error) {
+    console.error('Error al eliminar ejercicio:', error)
+    res.status(500).json({ message: 'Error interno del servidor al eliminar ejercicio.' })
+  }
+})
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
