@@ -41,7 +41,7 @@ app.post('/login', async (req, res) => {
         email: email,
         password: password
       },
-      asResponse: true // Muy importante para obtener el objeto Response completo
+      asResponse: true
     })
 
     if (authResponse.ok) {
@@ -50,18 +50,16 @@ app.post('/login', async (req, res) => {
 
       res.setHeader('Set-Cookie', cookies)
 
-      // Considera enviar solo la información necesaria del usuario
       return res.status(200).json({
         success: true,
         message: 'Login exitoso',
-        user: sessionData.user // O solo los campos que necesites
+        user: sessionData.user
       })
     } else {
       let errorBody = { message: 'Error al iniciar sesión.' }
       try {
         errorBody = await authResponse.json()
       } catch (e) {
-        // No se pudo parsear el cuerpo del error, usa el mensaje genérico
       }
       console.error('Error de Better Auth:', errorBody)
       return res.status(authResponse.status).json(errorBody)
@@ -71,23 +69,6 @@ app.post('/login', async (req, res) => {
     return res.status(500).json({ message: 'Error interno del servidor' })
   }
 })
-
-// Ruta de ejemplo para obtener la sesión actual (manejada por toNodeHandler)
-// El frontend llamaría a GET /api/auth/session
-// app.get('/api/me', async (req, res) => {
-//   try {
-//     const session = await auth.api.getSession({
-//       headers: fromNodeHeaders(req.headers)
-//     })
-//     if (!session) {
-//       return res.status(401).json({ message: 'No autenticado' })
-//     }
-//     return res.status(200).json({ user: session.user })
-//   } catch (error) {
-//     console.error('Error en /api/me:', error)
-//     return res.status(500).json({ message: 'Error interno del servidor' })
-//   }
-// })
 
 app.post('/register', async (req, res) => {
   const { email, password, name, username } = req.body
@@ -126,7 +107,7 @@ app.post('/logout', async (req, res) => {
   try {
     const response = await auth.api.signOut({
       headers: fromNodeHeaders(req.headers),
-      returnHeaders: true // Necesario para obtener las cabeceras Set-Cookie
+      returnHeaders: true
     })
 
     // Aplicar las cabeceras Set-Cookie de la respuesta de Better Auth a la respuesta de Express
@@ -137,33 +118,28 @@ app.post('/logout', async (req, res) => {
 
     res.status(200).json({ message: 'Logged out successfully' })
   } catch (error) {
-    console.error('Logout error:', error) // Es útil mantener esto para depuración en el servidor
+    console.error('Logout error:', error)
   }
 })
 
 app.get('/api/me', async (req, res) => {
   try {
-    // 1. Convierte las cabeceras de Express a Headers estándar
+    // Convierte las cabeceras de Express a Headers estándar
     const requestHeaders = fromNodeHeaders(req.headers)
 
-    // 2. Llama a getSession pasando las cabeceras
     const sessionData = await auth.api.getSession({
       headers: requestHeaders
     })
 
-    // 3. Verifica si se encontró una sesión
     if (sessionData) {
-      // ¡Éxito! Tienes la información del usuario y la sesión
       const user = sessionData.user
       const session = sessionData.session
 
-      // Devuelve la información relevante (¡cuidado con devolver datos sensibles!)
       res.json({
         user,
         sessionId: session.id
       })
     } else {
-      // No hay sesión válida
       res.status(401).json({ error: 'Unauthorized', message: 'No active session found.' })
     }
   } catch (error) {
@@ -173,12 +149,41 @@ app.get('/api/me', async (req, res) => {
 })
 
 app.get('/exercises', async (req, res) => {
-  const query = 'SELECT * FROM Ejercicio'
-
   try {
-    const [results] = await connection.query(query)
+    // Consulta para obtener todos los ejercicios
+    const [exercises] = await connection.query('SELECT * FROM Ejercicio')
+    console.log(`Found ${exercises.length} exercises`)
+
+    const exercisesWithMuscles = await Promise.all(
+      exercises.map(async (exercise) => {
+        try {
+          const muscleQuery = `
+            SELECT m.id, m.nombre 
+            FROM Musculo m
+            JOIN Ejercicio_Musculo em ON m.id = em.musculo_id 
+            WHERE em.ejercicio_id = ?
+          `
+          console.log(`Executing query for exercise ${exercise.id}:`, muscleQuery, [exercise.id])
+
+          const muscles = await connection.query(muscleQuery, [exercise.id])
+          console.log(`Found ${muscles.length} muscles for exercise ${exercise.id}:`, muscles)
+
+          return {
+            ...exercise,
+            category: muscles || []
+          }
+        } catch (muscleError) {
+          console.error(`Error fetching muscles for exercise ${exercise.id}:`, muscleError)
+          return {
+            ...exercise,
+            category: []
+          }
+        }
+      })
+    )
+
     res.status(200).json({
-      results: results,
+      results: exercisesWithMuscles,
       category: 'all'
     })
   } catch (err) {
@@ -187,14 +192,27 @@ app.get('/exercises', async (req, res) => {
   }
 })
 
+// app.get('/exercises', async (req, res) => {
+//   const query = 'SELECT * FROM Ejercicio'
+
+//   try {
+//     const [results] = await connection.query(query)
+//     res.status(200).json({
+//       results: results,
+//       category: 'all'
+//     })
+//   } catch (err) {
+//     console.error('Error fetching exercises:', err)
+//     res.status(500).json({ message: 'Error fetching exercises.' })
+//   }
+// })
+
 app.post('/exercises/new', async (req, res) => {
   const { name, username, category } = req.body
 
   if (!name || !username) {
-    return res.status(400).json({ message: 'Name and category are required.' })
+    return res.status(400).json({ message: 'Name and username are required.' })
   }
-
-  // const query = 'INSERT INTO Ejercicio (nombre, visibilidad) VALUES (?, ?)'
 
   try {
     // Insertar el ejercicio
@@ -214,41 +232,20 @@ app.post('/exercises/new', async (req, res) => {
         [values]
       )
 
-      return res.status(201).json({ message: 'Exercise created successfully with muscles.' })
+      return res.status(201).json({
+        message: 'Exercise created successfully with muscles.',
+        exerciseId: exerciseId
+      })
     } else {
-      return res.status(201).json({ message: 'Exercise created successfully without muscles.' })
+      return res.status(201).json({
+        message: 'Exercise created successfully without muscles.',
+        exerciseId: exerciseId
+      })
     }
   } catch (err) {
     console.error('Error during exercise creation:', err)
     return res.status(500).json({ message: 'Internal server error.' })
   }
-
-  // connection.query(query, [name, username], (err, results) => {
-  //   if (err) {
-  //     console.error('Error creating exercise:', err)
-  //     return res.status(500).json({ message: 'Error creating exercise.' })
-  //   }
-
-  //   console.log('Results from first query:', results) // Verifica lo que contiene results
-  //   const exerciseId = results.insertId
-  //   console.log('Exercise ID:', exerciseId)
-
-  //   if (category.length > 0) {
-  //     const values = category.map((muscleId) => [exerciseId, muscleId])
-  //     const insertMusclesQuery = 'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?'
-
-  //     connection.query(insertMusclesQuery, [values], (err2) => {
-  //       if (err2) {
-  //         console.error('Error linking muscles:', err2)
-  //         return res.status(500).json({ message: 'Error linking muscles to exercise.' })
-  //       }
-  //       res.status(201).json({ message: 'Exercise created successfully.' })
-  //     })
-  //   } else {
-  //     // Si no hay músculos, devolver solo éxito de creación
-  //     return res.status(201).json({ message: 'Exercise created successfully without muscles.' })
-  //   }
-  // })
 })
 
 app.delete('/exercises/delete/:id', async (req, res) => {
