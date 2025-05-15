@@ -77,6 +77,7 @@ app.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Email, contraseña y nombre son requeridos.' })
   }
 
+  // si no existe auth.options.plugins este sera undefined gracias al ?
   if (auth.options.plugins?.some(p => p.id === 'username') && !username) {
     return res.status(400).json({ message: 'Nombre de usuario es requerido.' })
   }
@@ -87,8 +88,8 @@ app.post('/register', async (req, res) => {
         email,
         password,
         name,
-        ...(username && { username }),
-        admin: true
+        // añadimos username solo si tiene un valor
+        ...(username && { username })
       }
     })
 
@@ -150,9 +151,7 @@ app.get('/api/me', async (req, res) => {
 
 app.get('/exercises', async (req, res) => {
   try {
-    // Consulta para obtener todos los ejercicios
     const [exercises] = await connection.query('SELECT * FROM Ejercicio')
-    console.log(`Found ${exercises.length} exercises`)
 
     const exercisesWithMuscles = await Promise.all(
       exercises.map(async (exercise) => {
@@ -163,10 +162,8 @@ app.get('/exercises', async (req, res) => {
             JOIN Ejercicio_Musculo em ON m.id = em.musculo_id 
             WHERE em.ejercicio_id = ?
           `
-          console.log(`Executing query for exercise ${exercise.id}:`, muscleQuery, [exercise.id])
 
           const muscles = await connection.query(muscleQuery, [exercise.id])
-          console.log(`Found ${muscles.length} muscles for exercise ${exercise.id}:`, muscles)
 
           return {
             ...exercise,
@@ -256,7 +253,7 @@ app.delete('/exercises/delete/:id', async (req, res) => {
   }
 
   try {
-    // Primero elimina relaciones con músculos si existen
+    // elimino relaciones con músculos si existen
     await connection.query(
       'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
       [id]
