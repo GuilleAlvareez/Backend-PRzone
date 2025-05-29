@@ -163,11 +163,11 @@ app.get('/exercises', async (req, res) => {
             WHERE em.ejercicio_id = ?
           `
 
-          const muscles = await connection.query(muscleQuery, [exercise.id])
+          const [muscles] = await connection.query(muscleQuery, [exercise.id])
 
           return {
             ...exercise,
-            category: muscles || []
+            category: muscles // Ahora devolvemos un array plano de objetos músculo
           }
         } catch (muscleError) {
           console.error(`Error fetching muscles for exercise ${exercise.id}:`, muscleError)
@@ -188,21 +188,6 @@ app.get('/exercises', async (req, res) => {
     res.status(500).json({ message: 'Error fetching exercises.' })
   }
 })
-
-// app.get('/exercises', async (req, res) => {
-//   const query = 'SELECT * FROM Ejercicio'
-
-//   try {
-//     const [results] = await connection.query(query)
-//     res.status(200).json({
-//       results: results,
-//       category: 'all'
-//     })
-//   } catch (err) {
-//     console.error('Error fetching exercises:', err)
-//     res.status(500).json({ message: 'Error fetching exercises.' })
-//   }
-// })
 
 app.post('/exercises/new', async (req, res) => {
   const { name, username, category } = req.body
@@ -253,13 +238,11 @@ app.delete('/exercises/delete/:id', async (req, res) => {
   }
 
   try {
-    // elimino relaciones con músculos si existen
     await connection.query(
       'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
       [id]
     )
 
-    // Luego elimina el ejercicio
     const [result] = await connection.query(
       'DELETE FROM Ejercicio WHERE id = ?',
       [id]
@@ -273,6 +256,134 @@ app.delete('/exercises/delete/:id', async (req, res) => {
   } catch (error) {
     console.error('Error al eliminar ejercicio:', error)
     res.status(500).json({ message: 'Error interno del servidor al eliminar ejercicio.' })
+  }
+})
+
+app.get('/workouts', async (req, res) => {
+  try {
+    const [workouts] = await connection.query('SELECT * FROM Entreno')
+
+    res.status(200).json({
+      results: workouts,
+      category: 'all'
+    })
+  } catch (err) {
+    console.error('Error fetching workouts:', err)
+    res.status(500).json({ message: 'Error fetching workouts.' })
+  }
+})
+
+app.post('/workouts/new', async (req, res) => {
+  console.log('Recibida solicitud a /workouts/new')
+  console.log('Datos recibidos:', req.body)
+
+  const { nombre, fecha, valoracion, comentarios, ejercicios, usuarioId, numeroEjercicios } = req.body
+
+  // Validación de datos
+  if (!nombre || !fecha || !valoracion || !ejercicios || !usuarioId) {
+    console.error('Datos incompletos:', { nombre, fecha, valoracion, ejercicios, usuarioId })
+    return res.status(400).json({ message: 'All fields are required.' })
+  }
+
+  try {
+    // Iniciar transacción para garantizar integridad
+    await connection.beginTransaction()
+
+    console.log('Iniciando transacción para crear entrenamiento')
+    console.log('Insertando entrenamiento con datos:', {
+      usuarioId,
+      nombre,
+      fecha,
+      valoracion,
+      numeroEjercicios: numeroEjercicios || ejercicios.length,
+      comentarios
+    })
+
+    // IMPORTANTE: Corregir el orden de los parámetros para que coincida con la consulta SQL
+    const [result] = await connection.execute(
+      'INSERT INTO Entreno (usuario_id, nombre, fecha, valoracion, numero_ejercicios, comentarios) VALUES (?, ?, ?, ?, ?, ?)',
+      [usuarioId, nombre, fecha, valoracion, numeroEjercicios || ejercicios.length, comentarios]
+    )
+
+    const workoutId = result.insertId
+    console.log('Entrenamiento creado con ID:', workoutId)
+
+    // Insertar ejercicios
+    console.log('Insertando ejercicios:', ejercicios)
+
+    for (const ejercicio of ejercicios) {
+      console.log('Insertando ejercicio:', ejercicio)
+
+      if (!ejercicio.nombre_id) {
+        throw new Error('ID de ejercicio no proporcionado')
+      }
+
+      await connection.execute(
+        'INSERT INTO Ejercicio_realizado (entreno_id, ejercicio_id, peso, series, repeticiones, observaciones) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          workoutId,
+          ejercicio.nombre_id,
+          ejercicio.peso || 0,
+          ejercicio.series || 0,
+          ejercicio.repeticiones || 0,
+          ejercicio.observaciones || null
+        ]
+      )
+    }
+
+    // Confirmar transacción
+    await connection.commit()
+    console.log('Transacción completada con éxito')
+
+    // Enviar respuesta exitosa
+    return res.status(201).json({
+      success: true,
+      message: 'Workout created successfully',
+      workoutId
+    })
+  } catch (err) {
+    // Revertir transacción en caso de error
+    await connection.rollback()
+    console.error('Error durante la creación del entrenamiento:', err)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error.',
+      error: err.message
+    })
+  }
+})
+
+app.get('/workouts/:id', async (req, res) => {
+  const { id } = req.params
+
+  if (!id) {
+    return res.status(400).json({ message: 'ID del entrenamiento requerido.' })
+  }
+
+  try {
+    const [workout] = await connection.query(
+      'SELECT * FROM Entreno WHERE id = ?',
+      [id]
+    )
+
+    if (workout.length === 0) {
+      return res.status(404).json({ message: 'Entrenamiento no encontrado.' })
+    }
+
+    const [exercises] = await connection.query(
+      'SELECT er.*, e.nombre AS ejercicio_nombre FROM Ejercicio_realizado er JOIN Ejercicio e ON er.ejercicio_id = e.id WHERE er.entreno_id = ?',
+      [id]
+    )
+
+    const completeWorkout = {
+      ...workout[0],
+      ejercicios: exercises
+    }
+
+    res.status(200).json(completeWorkout)
+  } catch (error) {
+    console.error('Error al obtener el entrenamiento:', error)
+    res.status(500).json({ message: 'Error interno del servidor al obtener el entrenamiento.' })
   }
 })
 
