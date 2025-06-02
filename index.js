@@ -387,6 +387,55 @@ app.get('/workouts/:id', async (req, res) => {
   }
 })
 
+app.get('/recentworkouts', async (req, res) => {
+  try {
+    const [workouts] = await connection.query(
+      'SELECT * FROM Entreno ORDER BY fecha DESC LIMIT 5'
+    )
+
+    res.status(200).json({
+      results: workouts,
+      category: 'all'
+    })
+  } catch (err) {
+    console.error('Error fetching recent workouts:', err)
+    res.status(500).json({ message: 'Error fetching recent workouts.' })
+  }
+})
+
+app.get('/dias-consecutivos/:usuario_id', async (req, res) => {
+  const { usuarioId } = req.params
+
+  try {
+    const [rows] = await connection.query(
+      `SELECT DISTINCT fecha
+       FROM Entreno
+       WHERE usuario_id = ?
+       ORDER BY fecha DESC`, [usuarioId]
+    )
+
+    const today = new Date()
+    let streak = 0
+
+    for (const row of rows) {
+      const fechaEntreno = new Date(row.fecha)
+      const diff = Math.floor((today - fechaEntreno) / (1000 * 60 * 60 * 24))
+
+      if (diff === 0 || diff === streak) {
+        streak++
+        today.setDate(today.getDate() - 1)
+      } else {
+        break
+      }
+    }
+
+    res.json({ diasConsecutivos: streak })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error al calcular los días consecutivos' })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
 })
