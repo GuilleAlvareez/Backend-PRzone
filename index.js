@@ -403,36 +403,71 @@ app.get('/recentworkouts', async (req, res) => {
   }
 })
 
-app.get('/dias-consecutivos/:usuario_id', async (req, res) => {
+app.get('/dias-consecutivos/:usuarioId', async (req, res) => {
   const { usuarioId } = req.params
 
   try {
     const [rows] = await connection.query(
-      `SELECT DISTINCT fecha
+      `SELECT DISTINCT DATE(fecha) AS fecha_entrenamiento
        FROM Entreno
        WHERE usuario_id = ?
-       ORDER BY fecha DESC`, [usuarioId]
+       ORDER BY fecha_entrenamiento DESC`,
+      [usuarioId]
     )
 
-    const today = new Date()
+    if (rows.length === 0) {
+      return res.json({ diasConsecutivos: 0 })
+    }
+
     let streak = 0
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+
+    const fechaEsperada = new Date(hoy)
 
     for (const row of rows) {
-      const fechaEntreno = new Date(row.fecha)
-      const diff = Math.floor((today - fechaEntreno) / (1000 * 60 * 60 * 24))
+      const fechaEntreno = new Date(row.fecha_entrenamiento)
 
-      if (diff === 0 || diff === streak) {
+      const esMismoDia =
+        fechaEntreno.getUTCFullYear() === fechaEsperada.getFullYear() &&
+        fechaEntreno.getUTCMonth() === fechaEsperada.getMonth() &&
+        fechaEntreno.getUTCDate() === fechaEsperada.getDate()
+
+      if (esMismoDia) {
         streak++
-        today.setDate(today.getDate() - 1)
-      } else {
+        fechaEsperada.setDate(fechaEsperada.getDate() - 1)
+      } else if (fechaEntreno < fechaEsperada) {
         break
       }
     }
 
     res.json({ diasConsecutivos: streak })
   } catch (err) {
-    console.error(err)
+    console.error('Error al calcular los días consecutivos:', err)
     res.status(500).json({ error: 'Error al calcular los días consecutivos' })
+  }
+})
+
+app.get('/exercises/mostused/:usuarioId', async (req, res) => {
+  const { usuarioId } = req.params
+
+  try {
+    const [rows] = await connection.query(
+      `SELECT e.nombre AS ejercicio, COUNT(er.id) AS veces_realizado
+      FROM Ejercicio_realizado er
+      JOIN Ejercicio e ON er.ejercicio_id = e.id
+      JOIN Entreno en ON er.entreno_id = en.id
+      WHERE en.usuario_id = ?
+      GROUP BY e.nombre
+      ORDER BY veces_realizado DESC
+      LIMIT 3;`,
+      [usuarioId]
+    )
+
+    res.json(rows)
+  } catch (err) {
+    console.error('Error al obtener los ejercicios más usados:', err)
+    res.status(500).json({ error: 'Error al obtener los ejercicios más usados' })
   }
 })
 
