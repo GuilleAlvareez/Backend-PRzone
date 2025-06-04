@@ -319,13 +319,14 @@ app.post('/workouts/new', async (req, res) => {
       }
 
       await connection.execute(
-        'INSERT INTO Ejercicio_realizado (entreno_id, ejercicio_id, peso, series, repeticiones, observaciones) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO Ejercicio_realizado (entreno_id, ejercicio_id, peso, series, repeticiones, rm_estimado, observaciones) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           workoutId,
           ejercicio.nombre_id,
           ejercicio.peso || 0,
           ejercicio.series || 0,
           ejercicio.repeticiones || 0,
+          parseFloat((ejercicio.peso * (1 + 0.0333 * ejercicio.repeticiones)).toFixed(2)),
           ejercicio.observaciones || null
         ]
       )
@@ -468,6 +469,26 @@ app.get('/exercises/mostused/:usuarioId', async (req, res) => {
   } catch (err) {
     console.error('Error al obtener los ejercicios más usados:', err)
     res.status(500).json({ error: 'Error al obtener los ejercicios más usados' })
+  }
+})
+
+app.get('/exercises/progress/:exerciseId', async (req, res) => {
+  const { exerciseId } = req.params
+
+  try {
+    const [rows] = await connection.query(
+      `SELECT DATE_FORMAT(en.fecha, '%Y-%m-%d') AS fecha, er.rm_estimado
+       FROM Ejercicio_realizado er
+       JOIN Entreno en ON er.entreno_id = en.id
+       WHERE er.ejercicio_id = ?
+       ORDER BY en.fecha ASC;`,
+      [exerciseId]
+    )
+
+    res.json(rows)
+  } catch (err) {
+    console.error('Error al obtener el progreso del ejercicio:', err)
+    res.status(500).json({ error: 'Error al obtener el progreso del ejercicio' })
   }
 })
 
