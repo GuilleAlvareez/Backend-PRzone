@@ -89,7 +89,8 @@ app.post('/register', async (req, res) => {
         password,
         name,
         // añadimos username solo si tiene un valor
-        ...(username && { username })
+        ...(username && { username }),
+        admin: false
       }
     })
 
@@ -149,9 +150,11 @@ app.get('/api/me', async (req, res) => {
   }
 })
 
-app.get('/exercises', async (req, res) => {
+app.get('/exercises/:username', async (req, res) => {
+  const { username } = req.params
+
   try {
-    const [exercises] = await connection.query('SELECT * FROM Ejercicio')
+    const [exercises] = await connection.query('SELECT * FROM Ejercicio WHERE visibilidad = ? OR visibilidad = "public"', [username])
 
     const exercisesWithMuscles = await Promise.all(
       exercises.map(async (exercise) => {
@@ -204,7 +207,6 @@ app.post('/exercises/new', async (req, res) => {
     )
 
     const exerciseId = result.insertId
-    console.log('Exercise ID:', exerciseId)
 
     // Insertar músculos si hay
     if (Array.isArray(category) && category.length > 0) {
@@ -259,9 +261,11 @@ app.delete('/exercises/delete/:id', async (req, res) => {
   }
 })
 
-app.get('/workouts', async (req, res) => {
+app.get('/workouts/:id', async (req, res) => {
+  const { id } = req.params
+
   try {
-    const [workouts] = await connection.query('SELECT * FROM Entreno')
+    const [workouts] = await connection.query('SELECT * FROM Entreno WHERE usuario_id = ?', [id])
 
     res.status(200).json({
       results: workouts,
@@ -270,6 +274,46 @@ app.get('/workouts', async (req, res) => {
   } catch (err) {
     console.error('Error fetching workouts:', err)
     res.status(500).json({ message: 'Error fetching workouts.' })
+  }
+})
+
+app.delete('/workouts/delete/:id', async (req, res) => {
+  const { id } = req.params
+
+  if (!id) {
+    return res.status(400).json({ message: 'ID del entrenamiento requerido.' })
+  }
+
+  try {
+    // Iniciar transacción para garantizar integridad
+    await connection.beginTransaction()
+
+    // Primero eliminar los ejercicios realizados asociados al entrenamiento
+    await connection.query(
+      'DELETE FROM Ejercicio_realizado WHERE entreno_id = ?',
+      [id]
+    )
+
+    // Luego eliminar el entrenamiento
+    const [result] = await connection.query(
+      'DELETE FROM Entreno WHERE id = ?',
+      [id]
+    )
+
+    if (result.affectedRows === 0) {
+      await connection.rollback()
+      return res.status(404).json({ message: 'Entrenamiento no encontrado.' })
+    }
+
+    // Confirmar transacción
+    await connection.commit()
+
+    res.status(200).json({ message: 'Entrenamiento y ejercicios asociados eliminados correctamente.' })
+  } catch (err) {
+    // Revertir transacción en caso de error
+    await connection.rollback()
+    console.error('Error al eliminar entrenamiento:', err)
+    res.status(500).json({ message: 'Error interno del servidor al eliminar entrenamiento.' })
   }
 })
 
@@ -354,7 +398,7 @@ app.post('/workouts/new', async (req, res) => {
   }
 })
 
-app.get('/workouts/:id', async (req, res) => {
+app.get('/workouts/details/:id', async (req, res) => {
   const { id } = req.params
 
   if (!id) {
@@ -388,10 +432,13 @@ app.get('/workouts/:id', async (req, res) => {
   }
 })
 
-app.get('/recentworkouts', async (req, res) => {
+app.get('/recentworkouts/:id', async (req, res) => {
+  const { id } = req.params
+
   try {
     const [workouts] = await connection.query(
-      'SELECT * FROM Entreno ORDER BY fecha DESC LIMIT 5'
+      'SELECT * FROM Entreno WHERE usuario_id = ? ORDER BY fecha DESC LIMIT 4',
+      [id]
     )
 
     res.status(200).json({
