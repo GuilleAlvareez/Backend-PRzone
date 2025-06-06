@@ -18,7 +18,7 @@ app.use(cors({
   credentials: true,
   // Puedes mantener los otros métodos y headers si los necesitas explícitamente,
   // aunque 'cors' suele manejar bien los comunes por defecto.
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
 }))
 
@@ -232,6 +232,43 @@ app.post('/exercises/new', async (req, res) => {
   }
 })
 
+app.patch('/exercises/update/:id', async (req, res) => {
+  const { id } = req.params
+  const { name, username, category } = req.body
+
+  if (!id || !name || !username) {
+    return res.status(400).json({ message: 'ID, name and username are required.' })
+  }
+
+  try {
+    // Actualizar el ejercicio
+    await connection.query(
+      'UPDATE Ejercicio SET nombre = ? WHERE id = ?',
+      [name, id]
+    )
+
+    // Eliminar los músculos antiguos
+    await connection.query(
+      'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
+      [id]
+    )
+
+    // Insertar nuevos músculos si hay
+    if (Array.isArray(category) && category.length > 0) {
+      const values = category.map((muscleId) => [id, muscleId])
+      await connection.query(
+        'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?',
+        [values]
+      )
+    }
+
+    res.status(200).json({ message: 'Exercise updated successfully.' })
+  } catch (err) {
+    console.error('Error during exercise update:', err)
+    return res.status(500).json({ message: 'Internal server error.' })
+  }
+})
+
 app.delete('/exercises/delete/:id', async (req, res) => {
   const { id } = req.params
 
@@ -285,16 +322,14 @@ app.delete('/workouts/delete/:id', async (req, res) => {
   }
 
   try {
-    // Iniciar transacción para garantizar integridad
+    // Iniciar transacción
     await connection.beginTransaction()
 
-    // Primero eliminar los ejercicios realizados asociados al entrenamiento
     await connection.query(
       'DELETE FROM Ejercicio_realizado WHERE entreno_id = ?',
       [id]
     )
 
-    // Luego eliminar el entrenamiento
     const [result] = await connection.query(
       'DELETE FROM Entreno WHERE id = ?',
       [id]
