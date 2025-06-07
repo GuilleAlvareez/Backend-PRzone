@@ -579,26 +579,32 @@ app.get('/exercises/progress/:exerciseId', async (req, res) => {
 
 // Chat bot
 app.post('/chat', async (req, res) => {
-  const { message } = req.body
+  const { messages } = req.body
 
-  if (!message) {
-    return res.status(400).json({ message: 'Message is required.' })
+  if (!messages) {
+    return res.status(400).json({ message: 'Messages is required.' })
   }
 
+  console.log('Messages received:', messages)
+
   try {
+    const formattedMessages = messages.map(msg => {
+      const role = msg.role === 'user' ? 'user' : 'assistant'
+
+      return {
+        role: role,
+        content: [
+          {
+            type: 'text',
+            text: msg.content
+          }
+        ]
+      }
+    })
+
     const messageToSend = {
       model: process.env.model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: message
-            }
-          ]
-        }
-      ]
+      messages: formattedMessages
     }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -611,7 +617,13 @@ app.post('/chat', async (req, res) => {
     })
 
     const data = await response.json()
-    res.json(data)
+
+    const dataSendFront = {
+      created: data.created,
+      role: data.choices[0].message.role,
+      reply: data.choices[0].message.content
+    }
+    res.json(dataSendFront)
   } catch (err) {
     console.error('Error during chat:', err)
     return res.status(500).json({ message: 'Internal server error.' })
