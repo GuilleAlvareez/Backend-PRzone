@@ -4,6 +4,9 @@ import { connection, PORT } from './config.js'
 import cors from 'cors'
 import { auth } from './utils/auth.js'
 import { fromNodeHeaders } from 'better-auth/node'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const app = express()
 
@@ -571,6 +574,47 @@ app.get('/exercises/progress/:exerciseId', async (req, res) => {
   } catch (err) {
     console.error('Error al obtener el progreso del ejercicio:', err)
     res.status(500).json({ error: 'Error al obtener el progreso del ejercicio' })
+  }
+})
+
+// Chat bot
+app.post('/chat', async (req, res) => {
+  const { message } = req.body
+
+  if (!message) {
+    return res.status(400).json({ message: 'Message is required.' })
+  }
+
+  try {
+    const messageToSend = {
+      model: process.env.model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: message
+            }
+          ]
+        }
+      ]
+    }
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(messageToSend)
+    })
+
+    const data = await response.json()
+    res.json(data)
+  } catch (err) {
+    console.error('Error during chat:', err)
+    return res.status(500).json({ message: 'Internal server error.' })
   }
 })
 
