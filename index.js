@@ -579,7 +579,7 @@ app.get('/exercises/progress/:exerciseId', async (req, res) => {
 
 // Chat bot
 app.post('/chat', async (req, res) => {
-  const { messages } = req.body
+  const { messages, userId } = req.body
 
   if (!messages) {
     return res.status(400).json({ message: 'Messages is required.' })
@@ -588,6 +588,13 @@ app.post('/chat', async (req, res) => {
   console.log('Messages received:', messages)
 
   try {
+    const userMessage = messages[messages.length - 1]
+
+    await connection.query(
+      'INSERT INTO Mensaje (usuario_id, fecha, rol, mensaje) VALUES (?, NOW(), ?, ?)',
+      [userId, 'user', userMessage.content]
+    )
+
     const formattedMessages = messages.map(msg => {
       const role = msg.role === 'user' ? 'user' : 'assistant'
 
@@ -618,15 +625,66 @@ app.post('/chat', async (req, res) => {
 
     const data = await response.json()
 
+    const replyAI = data.choices[0].message.content
+
+    await connection.query(
+      'INSERT INTO Mensaje (usuario_id, fecha, rol, mensaje) VALUES (?, NOW(), ?, ?)',
+      [userId, 'assistant', replyAI]
+    )
+
     const dataSendFront = {
       created: data.created,
       role: data.choices[0].message.role,
-      reply: data.choices[0].message.content
+      reply: replyAI
     }
+
     res.json(dataSendFront)
   } catch (err) {
     console.error('Error during chat:', err)
     return res.status(500).json({ message: 'Internal server error.' })
+  }
+})
+
+app.get('/chat/history/:userId', async (req, res) => {
+  const { userId } = req.params // Leemos el ID de los parámetros de la URL
+
+  if (!userId) {
+    return res.status(400).json({ message: 'El ID de usuario es requerido.' })
+  }
+
+  try {
+    const [rows] = await connection.query(
+      'SELECT rol, mensaje FROM Mensaje WHERE usuario_id = ? ORDER BY fecha ASC',
+      [userId]
+    )
+
+    // Mapeamos al formato { role, content } que usa el estado del frontend
+    const history = rows.map(row => ({
+      role: row.rol,
+      content: row.mensaje
+    }))
+
+    res.json(history)
+  } catch (err) {
+    console.error('Error al obtener el historial del chat:', err)
+    res.status(500).json({ message: 'Error interno del servidor.' })
+  }
+})
+
+app.delete('/chat/history/:userId', async (req, res) => {
+  const { userId } = req.params
+
+  if (!userId) {
+    return res.status(400).json({ message: 'El ID de usuario es requerido.' })
+  }
+
+  try {
+    await connection.query('DELETE FROM Mensaje WHERE usuario_id = ?', [userId])
+
+    res.status(200).json({ message: 'Historial eliminado correctamente.' })
+  } catch (err) {
+    console.error('Error al eliminar el historial del chat:', err)
+    res.status(500).json({ message: 'Error interno del servidor.' })
   }
 })
 
