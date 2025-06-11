@@ -196,7 +196,8 @@ app.get('/exercises/:username', async (req, res) => {
 })
 
 app.post('/exercises/new', async (req, res) => {
-  const { name, username, category } = req.body
+  const { name, username, category, description } = req.body
+  console.log('Received exercise creation request:', req.body)
 
   if (!name || !username) {
     return res.status(400).json({ message: 'Name and username are required.' })
@@ -205,8 +206,8 @@ app.post('/exercises/new', async (req, res) => {
   try {
     // Insertar el ejercicio
     const [result] = await connection.execute(
-      'INSERT INTO Ejercicio (nombre, visibilidad) VALUES (?, ?)',
-      [name, username]
+      'INSERT INTO Ejercicio (nombre, visibilidad, descripcion) VALUES (?, ?, ?)',
+      [name, username, description]
     )
 
     const exerciseId = result.insertId
@@ -237,9 +238,9 @@ app.post('/exercises/new', async (req, res) => {
 
 app.patch('/exercises/update/:id', async (req, res) => {
   const { id } = req.params
-  const { name, username, category } = req.body
+  const { name, category } = req.body
 
-  if (!id || !name || !username) {
+  if (!id || !name) {
     return res.status(400).json({ message: 'ID, name and username are required.' })
   }
 
