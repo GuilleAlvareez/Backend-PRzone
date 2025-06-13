@@ -93,7 +93,7 @@ app.post('/register', async (req, res) => {
         name,
         // añadimos username solo si tiene un valor
         ...(username && { username }),
-        admin: false
+        admin: true
       }
     })
 
@@ -215,7 +215,7 @@ app.post('/exercises/new', async (req, res) => {
     if (Array.isArray(category) && category.length > 0) {
       const values = category.map((muscleId) => [exerciseId, muscleId])
       await connection.query(
-        'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?',
+        'INSERT INTO Ejercicio_Musculo (ejercicio_id, musculo_id) VALUES ?',
         [values]
       )
 
@@ -252,7 +252,7 @@ app.patch('/exercises/update/:id', async (req, res) => {
 
     // Eliminar los músculos antiguos
     await connection.query(
-      'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
+      'DELETE FROM Ejercicio_Musculo WHERE ejercicio_id = ?',
       [id]
     )
 
@@ -260,7 +260,7 @@ app.patch('/exercises/update/:id', async (req, res) => {
     if (Array.isArray(category) && category.length > 0) {
       const values = category.map((muscleId) => [id, muscleId])
       await connection.query(
-        'INSERT INTO Ejercicio_musculo (ejercicio_id, musculo_id) VALUES ?',
+        'INSERT INTO Ejercicio_Musculo (ejercicio_id, musculo_id) VALUES ?',
         [values]
       )
     }
@@ -281,7 +281,7 @@ app.delete('/exercises/delete/:id', async (req, res) => {
 
   try {
     await connection.query(
-      'DELETE FROM Ejercicio_musculo WHERE ejercicio_id = ?',
+      'DELETE FROM Ejercicio_Musculo WHERE ejercicio_id = ?',
       [id]
     )
 
@@ -318,7 +318,7 @@ app.get('/exercises/details/:id', async (req, res) => {
       return res.status(404).json({ message: 'Entrenamiento no encontrado.' })
     }
 
-    res.status(200).json(exercise)
+    res.status(200).json(exercise[0])
   } catch (error) {
     console.error('Error al obtener el ejercicio:', error)
     res.status(500).json({ message: 'Error interno del servidor al obtener el ejercicio.' })

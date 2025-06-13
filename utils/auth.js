@@ -1,14 +1,20 @@
 import { betterAuth } from 'better-auth'
 import { createPool } from 'mysql2/promise'
 import { username } from 'better-auth/plugins'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 export const auth = betterAuth({
   database: createPool({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: '',
-    database: 'przone'
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'przone',
+    ssl: {
+      rejectUnauthorized: true
+    }
   }),
   emailAndPassword: {
     enabled: true
@@ -16,16 +22,16 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       admin: {
-        type: 'boolean', // Define el tipo como booleano
-        required: false, // No es estrictamente requerido ya que tiene un default
-        defaultValue: false, // Establece el valor por defecto a false
+        type: 'boolean',
+        required: false,
+        defaultValue: false,
         input: true
       }
     }
   },
   plugins: [
     username({
-      minUsernameLength: 3, // Longitud mínima (puedes ajustar)
+      minUsernameLength: 3,
       maxUsernameLength: 20
     })
   ]
