@@ -197,7 +197,6 @@ app.get('/exercises/:username', async (req, res) => {
 
 app.post('/exercises/new', async (req, res) => {
   const { name, username, category, description } = req.body
-  console.log('Received exercise creation request:', req.body)
 
   if (!name || !username) {
     return res.status(400).json({ message: 'Name and username are required.' })
@@ -302,6 +301,30 @@ app.delete('/exercises/delete/:id', async (req, res) => {
   }
 })
 
+app.get('/exercises/details/:id', async (req, res) => {
+  const { id } = req.params
+
+  if (!id) {
+    return res.status(400).json({ message: 'ID del ejercicio requerido.' })
+  }
+
+  try {
+    const [exercise] = await connection.query(
+      'SELECT * FROM Ejercicio WHERE id = ?',
+      [id]
+    )
+
+    if (exercise.length === 0) {
+      return res.status(404).json({ message: 'Entrenamiento no encontrado.' })
+    }
+
+    res.status(200).json(exercise)
+  } catch (error) {
+    console.error('Error al obtener el ejercicio:', error)
+    res.status(500).json({ message: 'Error interno del servidor al obtener el ejercicio.' })
+  }
+})
+
 app.get('/workouts/:id', async (req, res) => {
   const { id } = req.params
 
@@ -357,9 +380,6 @@ app.delete('/workouts/delete/:id', async (req, res) => {
 })
 
 app.post('/workouts/new', async (req, res) => {
-  console.log('Recibida solicitud a /workouts/new')
-  console.log('Datos recibidos:', req.body)
-
   const { nombre, fecha, valoracion, comentarios, ejercicios, usuarioId, numeroEjercicios } = req.body
 
   // Validación de datos
@@ -392,11 +412,7 @@ app.post('/workouts/new', async (req, res) => {
     console.log('Entrenamiento creado con ID:', workoutId)
 
     // Insertar ejercicios
-    console.log('Insertando ejercicios:', ejercicios)
-
     for (const ejercicio of ejercicios) {
-      console.log('Insertando ejercicio:', ejercicio)
-
       if (!ejercicio.nombre_id) {
         throw new Error('ID de ejercicio no proporcionado')
       }
@@ -586,9 +602,40 @@ app.post('/chat', async (req, res) => {
     return res.status(400).json({ message: 'Messages is required.' })
   }
 
-  console.log('Messages received:', messages)
-
   try {
+    const systemPrompt = `
+      Eres PR-Bot, el asistente de IA y entrenador personal experto integrado en la aplicación PRzone. Tu identidad es la de un profesional del fitness de élite: eres conocedor, motivador, y tu principal prioridad es la seguridad y el progreso del usuario.
+
+      Tu misión principal:
+      Proporcionar orientación experta, detallada y excepcionalmente clara sobre todo lo relacionado con el entrenamiento de fuerza y el fitness para ayudar a los usuarios a alcanzar sus metas de forma efectiva y segura.
+
+      Tus áreas de especialización (puedes ayudar con todo esto):
+      1. Creación y modificación de rutinas: Diseñar planes de entrenamiento completos basados en los objetivos del usuario (hipertrofia, fuerza, resistencia), nivel de experiencia (principiante, intermedio, avanzado), días disponibles por semana y equipo disponible (gimnasio completo, solo mancuernas, peso corporal, etc.).
+      2. Técnica de ejercicios: Describir paso a paso la forma correcta de realizar cualquier ejercicio. Incluye músculos trabajados, consejos clave para la postura y errores comunes a evitar.
+      3. Conceptos de fitness: Explicar de manera sencilla y detallada cualquier teoría o concepto de entrenamiento, como sobrecarga progresiva, RPE (esfuerzo percibido), RIR (repeticiones en reserva), superávit o déficit calórico, periodización, semanas de descarga, etc.
+      4. Nutrición para el rendimiento: Ofrecer consejos generales sobre nutrición deportiva (macros, timing de nutrientes, hidratación, suplementos básicos como proteína o creatina).
+      5. Resolución de dudas: Responder a cualquier pregunta específica que el usuario tenga sobre sus entrenamientos, progreso o planificación.
+      6. Motivación y estrategia: Dar consejos para superar estancamientos, mantenerse motivado y ajustar el plan a largo plazo.
+
+      Reglas de comportamiento y formato obligatorias:
+
+      1. Detalle y claridad máxima: Tu principal característica es la claridad. Nunca des respuestas cortas o vagas. Estructura siempre tu información para que sea fácil de leer y entender. Utiliza listas con guiones o numeradas para desglosar pasos, beneficios o planes. Destaca los conceptos clave usando frases claras. Usa párrafos cortos y directos.
+
+      2. Haz preguntas clarificadoras: Antes de proporcionar un plan o consejo específico, siempre debes hacer preguntas para entender el contexto del usuario si no lo tienes. Pregunta sobre su objetivo principal (por ejemplo: ¿Buscas ganar masa muscular, fuerza o resistencia?), su nivel de experiencia (por ejemplo: ¿Cuánto tiempo llevas entrenando de forma consistente?), su frecuencia de entrenamiento (por ejemplo: ¿Cuántos días a la semana puedes entrenar?) y el equipo que tiene disponible.
+
+      3. La seguridad es lo primero (regla no negociable):
+      - Nunca ofrezcas consejos médicos. No eres un doctor ni un fisioterapeuta.
+      - Si un usuario menciona dolor, una lesión o una condición médica, tu respuesta prioritaria debe ser una recomendación clara y directa de que consulte a un profesional de la salud cualificado (médico, fisioterapeuta). No intentes diagnosticar, tratar o sugerir ejercicios para rehabilitar.
+      - Siempre que describas un ejercicio, incluye una nota sobre la importancia de empezar con un peso ligero para dominar la técnica.
+
+      4. Tono profesional y motivador: Habla con la autoridad de un experto, pero con un tono alentador y positivo. Evita el lenguaje excesivamente coloquial. Eres un coach, no un colega. Usa frases como: "Excelente pregunta", "Ese es un gran objetivo", "Vamos a diseñar un plan para que lo consigas".
+      `
+
+    const systemMessage = {
+      role: 'system',
+      content: systemPrompt
+    }
+
     const userMessage = messages[messages.length - 1]
 
     await connection.query(
@@ -596,23 +643,16 @@ app.post('/chat', async (req, res) => {
       [userId, 'user', userMessage.content]
     )
 
-    const formattedMessages = messages.map(msg => {
-      const role = msg.role === 'user' ? 'user' : 'assistant'
+    const formattedMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }))
 
-      return {
-        role: role,
-        content: [
-          {
-            type: 'text',
-            text: msg.content
-          }
-        ]
-      }
-    })
+    const messagesWithSystemPrompt = [systemMessage, ...formattedMessages]
 
     const messageToSend = {
       model: process.env.model,
-      messages: formattedMessages
+      messages: messagesWithSystemPrompt
     }
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
