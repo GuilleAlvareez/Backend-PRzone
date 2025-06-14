@@ -729,6 +729,9 @@ app.delete('/chat/history/:userId', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+console.log('process.env.PORT:', process.env.PORT);
+console.log('PORT exportada:', PORT);
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`)
 })
