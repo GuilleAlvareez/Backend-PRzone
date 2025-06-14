@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { createPool } from 'mysql2/promise'
-import { username, bearer } from 'better-auth/plugins'
+// La importación de plugins debe ser desde 'better-auth/plugins'
+import { username } from 'better-auth/plugins/username' 
+import { bearer } from 'better-auth/plugins/bearer'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -19,12 +21,18 @@ export const auth = betterAuth({
       rejectUnauthorized: true
     }
   }),
+  emailAndPassword: {
+    enabled: true,
+    // 👇 AÑADE ESTA SECCIÓN AQUÍ DENTRO
+    cookieOptions: {
+      secure: true,
+      sameSite: 'none'
+    }
+  },
+  // 👇 VAMOS A DEJAR ESTA TAMBIÉN POR SI ACASO, NO HACE DAÑO
   cookieOptions: {
     secure: true, 
     sameSite: 'none' 
-  },
-  emailAndPassword: {
-    enabled: true
   },
   user: {
     additionalFields: {
