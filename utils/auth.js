@@ -19,12 +19,12 @@ export const auth = betterAuth({
       rejectUnauthorized: true
     }
   }),
-  emailAndPassword: {
-    enabled: true
-  },
   cookieOptions: {
     secure: true, 
     sameSite: 'none' 
+  },
+  emailAndPassword: {
+    enabled: true
   },
   user: {
     additionalFields: {
