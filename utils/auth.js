@@ -1,8 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { createPool } from 'mysql2/promise'
-// La importación de plugins debe ser desde 'better-auth/plugins'
-import { username } from 'better-auth/plugins/username' 
-import { bearer } from 'better-auth/plugins/bearer'
+import { username, bearer } from 'better-auth/plugins'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -11,6 +9,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 
 export const auth = betterAuth({
   url: process.env.BETTER_AUTH_URL,
+  trustedOrigins: ['https://frontend-przone.vercel.app'], 
   database: createPool({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
@@ -21,18 +20,14 @@ export const auth = betterAuth({
       rejectUnauthorized: true
     }
   }),
-  emailAndPassword: {
-    enabled: true,
-    // 👇 AÑADE ESTA SECCIÓN AQUÍ DENTRO
-    cookieOptions: {
-      secure: true,
-      sameSite: 'none'
+  advanced: {
+    defaultCookieAttributes: {
+      secure: true, 
+      sameSite: 'none' 
     }
   },
-  // 👇 VAMOS A DEJAR ESTA TAMBIÉN POR SI ACASO, NO HACE DAÑO
-  cookieOptions: {
-    secure: true, 
-    sameSite: 'none' 
+  emailAndPassword: {
+    enabled: true
   },
   user: {
     additionalFields: {
