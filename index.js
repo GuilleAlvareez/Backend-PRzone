@@ -49,17 +49,17 @@ app.post('/login', async (req, res) => {
 
     if (authResponse.ok) {
       console.log('dentro de authResponse.ok')
-        const cookies = authResponse.headers.getSetCookie();
-        const sessionData = await authResponse.json();
-        console.log('Session Data:', sessionData)
+      const cookies = authResponse.headers.getSetCookie()
+      const sessionData = await authResponse.json()
+      console.log('Session Data:', sessionData)
 
-        // EXTRAE EL TOKEN DE LA COOKIE PARA ENVIARLO
-        const sessionTokenCookie = cookies.find(c => c.startsWith('__secure-better-auth.session_token'))
-        const sessionToken = sessionTokenCookie ? sessionTokenCookie.split(';')[0].split('=')[1] : null
-        console.log('Session Token:', sessionToken)
+      // EXTRAE EL TOKEN DE LA COOKIE PARA ENVIARLO
+      const sessionTokenCookie = cookies.find(c => c.startsWith('__secure-better-auth.session_token'))
+      const sessionToken = sessionTokenCookie ? sessionTokenCookie.split(';')[0].split('=')[1] : null
+      console.log('Session Token:', sessionToken)
 
-        res.setHeader('Set-Cookie', cookies);
-        console.log('Cookies seteadas:', cookies)
+      res.setHeader('Set-Cookie', cookies)
+      console.log('Cookies seteadas:', cookies)
 
       return res.status(200).json({
         success: true,

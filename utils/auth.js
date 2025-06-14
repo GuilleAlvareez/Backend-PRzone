@@ -5,7 +5,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production'
 
 export const auth = betterAuth({
   url: process.env.BETTER_AUTH_URL,
@@ -25,7 +25,7 @@ export const auth = betterAuth({
   cookies: {
     // Forzamos la configuración para producción cross-domain.
     sameSite: 'none',
-    secure: true,
+    secure: true
   },
   user: {
     additionalFields: {
