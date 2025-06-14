@@ -23,8 +23,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
 }
 
-app.options('*', cors(corsOptions));
-
 app.use(cors(corsOptions));
 
 app.get('/', (req, res) => {
