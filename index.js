@@ -244,7 +244,7 @@ app.post('/exercises/new', async (req, res) => {
 
 app.patch('/exercises/update/:id', async (req, res) => {
   const { id } = req.params
-  const { name, category } = req.body
+  const { name, category, description } = req.body
 
   if (!id || !name) {
     return res.status(400).json({ message: 'ID, name and username are required.' })
@@ -253,8 +253,8 @@ app.patch('/exercises/update/:id', async (req, res) => {
   try {
     // Actualizar el ejercicio
     await connection.query(
-      'UPDATE Ejercicio SET nombre = ? WHERE id = ?',
-      [name, id]
+      'UPDATE Ejercicio SET nombre = ?, descripcion = ? WHERE id = ?',
+      [name, description, id]
     )
 
     // Eliminar los músculos antiguos
