@@ -26,9 +26,7 @@ app.use(cors({
 }))
 
 app.get('/', (req, res) => {
-  // const { user } = req.session
-
-  // return res.send({ data })
+  res.send('Hello from backend!');
 })
 
 app.post('/login', async (req, res) => {
