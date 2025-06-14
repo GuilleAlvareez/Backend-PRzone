@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { createPool } from 'mysql2/promise'
-import { username } from 'better-auth/plugins'
+import { username, bearer } from 'better-auth/plugins'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -41,6 +41,7 @@ export const auth = betterAuth({
     username({
       minUsernameLength: 3,
       maxUsernameLength: 20
-    })
+    }),
+    bearer()
   ]
 })

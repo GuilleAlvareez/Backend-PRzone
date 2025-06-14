@@ -138,9 +138,7 @@ app.post('/logout', async (req, res) => {
 
 app.get('/api/me', async (req, res) => {
   try {
-    // Convierte las cabeceras de Express a Headers estándar
     const requestHeaders = fromNodeHeaders(req.headers)
-
     const sessionData = await auth.api.getSession({
       headers: requestHeaders
     })
@@ -148,7 +146,6 @@ app.get('/api/me', async (req, res) => {
     if (sessionData) {
       const user = sessionData.user
       const session = sessionData.session
-
       res.json({
         user,
         sessionId: session.id
