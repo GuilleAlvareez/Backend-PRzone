@@ -22,11 +22,9 @@ export const auth = betterAuth({
     enabled: true
   },
   cookies: {
-    // En producción, permite cross-site. En desarrollo, usa el default 'lax'.
-    sameSite: isProduction ? 'none' : 'lax',
-    // En producción, la cookie DEBE ser segura (solo HTTPS).
-    secure: isProduction,
-    //domain: isProduction ? 'backend-przone.onrender.com' : undefined,
+    // Forzamos la configuración para producción cross-domain.
+    sameSite: 'none',
+    secure: true,
   },
   user: {
     additionalFields: {
