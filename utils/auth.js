@@ -26,7 +26,7 @@ export const auth = betterAuth({
     sameSite: isProduction ? 'none' : 'lax',
     // En producción, la cookie DEBE ser segura (solo HTTPS).
     secure: isProduction,
-    domain: isProduction ? 'backend-przone.onrender.com' : undefined,
+    //domain: isProduction ? 'backend-przone.onrender.com' : undefined,
   },
   user: {
     additionalFields: {
