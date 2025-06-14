@@ -3,10 +3,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-export const {
-  PORT = process.env.PORT || 3000,
-  SECRET_JWT_KEY = 'the-secret-key-jwt&572'
-} = process.env
+export const PORT = process.env.PORT || 3000;
 
 export const connection = await mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
