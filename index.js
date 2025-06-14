@@ -16,16 +16,16 @@ app.use(cookieParser())
 
 const clientURL = process.env.CLIENT_URL || 'http://localhost:5173'
 
-app.use(cors({
-  // Especifica el origen EXACTO de tu frontend
+const corsOptions = {
   origin: clientURL,
-  // Permite que el navegador envíe y reciba cookies
   credentials: true,
-  // Puedes mantener los otros métodos y headers si los necesitas explícitamente,
-  // aunque 'cors' suele manejar bien los comunes por defecto.
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
-}))
+}
+
+app.options('*', cors(corsOptions));
+
+app.use(cors(corsOptions));
 
 app.get('/', (req, res) => {
   res.send('Hello from backend!');
