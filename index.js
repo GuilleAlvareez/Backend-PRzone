@@ -16,7 +16,7 @@ app.use(cookieParser())
 
 app.use(cors({
   // Especifica el origen EXACTO de tu frontend
-  origin: 'http://localhost:5173', // <-- CAMBIA ESTO si tu frontend está en otro puerto/dominio
+  origin: 'https://frontend-przone.vercel.app/',
   // Permite que el navegador envíe y reciba cookies
   credentials: true,
   // Puedes mantener los otros métodos y headers si los necesitas explícitamente,
