@@ -143,12 +143,12 @@ app.get('/api/me', async (req, res) => {
 
     const requestHeaders = fromNodeHeaders(req.headers)
     console.log("antes de obtener session")
-
+    console.log("Request Headers:", requestHeaders)
     const sessionData = await auth.api.getSession({
       headers: requestHeaders
     })
 
-    cosnole.log("despues de obtener session")
+    console.log("despues de obtener session")
 
     if (sessionData) {
       console.log("dentro de if sessionData")
