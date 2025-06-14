@@ -139,12 +139,20 @@ app.post('/logout', async (req, res) => {
 app.get('/api/me', async (req, res) => {
   console.log("entra en api/me")
   try {
+    console.log("primer try")
+
     const requestHeaders = fromNodeHeaders(req.headers)
+    console.log("antes de obtener session")
+
     const sessionData = await auth.api.getSession({
       headers: requestHeaders
     })
 
+    cosnole.log("despues de obtener session")
+
     if (sessionData) {
+      console.log("dentro de if sessionData")
+      console.log("Session Data:", sessionData)
       const user = sessionData.user
       const session = sessionData.session
       res.json({
