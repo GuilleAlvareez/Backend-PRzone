@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 export const {
-  PORT = 3000,
+  PORT = process.env.PORT || 3000,
   SECRET_JWT_KEY = 'the-secret-key-jwt&572'
 } = process.env
 
