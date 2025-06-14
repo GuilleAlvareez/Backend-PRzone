@@ -53,10 +53,22 @@ app.post('/login', async (req, res) => {
 
       res.setHeader('Set-Cookie', cookies)
 
+      if (authResponse.ok) {
+        const cookies = authResponse.headers.getSetCookie();
+        const sessionData = await authResponse.json();
+
+        // EXTRAE EL TOKEN DE LA COOKIE PARA ENVIARLO
+        const sessionTokenCookie = cookies.find(c => c.startsWith('__secure-better-auth.session_token'))
+        const sessionToken = sessionTokenCookie ? sessionTokenCookie.split(';')[0].split('=')[1] : null
+
+        res.setHeader('Set-Cookie', cookies);
+      }
+
       return res.status(200).json({
         success: true,
         message: 'Login exitoso',
-        user: sessionData.user
+        user: sessionData.user,
+        token: sessionToken
       })
     } else {
       let errorBody = { message: 'Error al iniciar sesión.' }
