@@ -137,6 +137,7 @@ app.post('/logout', async (req, res) => {
 })
 
 app.get('/api/me', async (req, res) => {
+  console.log("entra en api/me")
   try {
     const requestHeaders = fromNodeHeaders(req.headers)
     const sessionData = await auth.api.getSession({
