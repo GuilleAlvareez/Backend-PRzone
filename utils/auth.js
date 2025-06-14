@@ -9,7 +9,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 
 export const auth = betterAuth({
   url: process.env.BETTER_AUTH_URL,
-  trustedOrigins: ['https://frontend-przone.vercel.app'], 
+  trustedOrigins: ['https://przone.vercel.app'], 
   database: createPool({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
