@@ -22,10 +22,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true
   },
-  cookies: {
-    // Forzamos la configuración para producción cross-domain.
-    sameSite: 'none',
-    secure: true
+  cookieOptions: {
+    secure: true, 
+    sameSite: 'none' 
   },
   user: {
     additionalFields: {
