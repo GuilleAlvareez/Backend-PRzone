@@ -102,7 +102,7 @@ app.post('/register', async (req, res) => {
         name,
         // añadimos username solo si tiene un valor
         ...(username && { username }),
-        admin: true
+        admin: false
       }
     })
 
