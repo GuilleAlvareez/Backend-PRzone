@@ -14,9 +14,11 @@ app.use(express.json())
 
 app.use(cookieParser())
 
+const clientURL = process.env.CLIENT_URL || 'http://localhost:5173'
+
 app.use(cors({
   // Especifica el origen EXACTO de tu frontend
-  origin: 'https://frontend-przone.vercel.app/',
+  origin: clientURL,
   // Permite que el navegador envíe y reciba cookies
   credentials: true,
   // Puedes mantener los otros métodos y headers si los necesitas explícitamente,
