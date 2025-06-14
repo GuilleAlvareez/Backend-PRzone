@@ -5,6 +5,8 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const auth = betterAuth({
   database: createPool({
     host: process.env.DB_HOST || 'localhost',
@@ -18,6 +20,12 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true
+  },
+  cookies: {
+    // En producción, permite cross-site. En desarrollo, usa el default 'lax'.
+    sameSite: isProduction ? 'none' : 'lax',
+    // En producción, la cookie DEBE ser segura (solo HTTPS).
+    secure: isProduction,
   },
   user: {
     additionalFields: {
